@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <style>
+        .first{
+            background-color: aquamarine;
+            width: 20em;
+            height: 20em;
+        }
+        .show{
+            transition: 1s linear all; /* IE10+ and Future Browsers */
+            opacity: 1;
+        }
+        .hide{
+            opacity: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="first hide"></div>
+    <button>show</button>
+
+    <script src="http://static.visicom.ua/js/d3"></script>
+
+    <script>
+        d3.select('button').on('click', function(){
+            d3.select('div').classed({
+                show: true,
+                hide: false
+            })
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+<div id="first" >
+    {{value}}
+    <button al-click="onClick()">click</button>
+
+    <button al-click="onShow()" al-if="isShow">show</button>
+</div>
+<div id="second" >
+    {{value}}
+    <button al-click="onClick()" al-if="isShow">click</button>
+    <button al-click="onShow()">show</button>
+</div>
+<script src="http://underscorejs.org/underscore.js"></script>
+<script src="alight.0.11.js"></script>
+<script>
+
+    //        var model = _.extend({
+    //            isShow: true,
+    //            value: 1,
+    //            onClick: function(){ this.value += 1 },
+    //            onShow: function() { this.isShow = !this.isShow}
+    //        }, alight.Scope());
+    //
+    //        alight.applyBindings(model, document.querySelector("#first"))
+    //        alight.applyBindings(model, document.querySelector("#second"))
+
+
+    model = {
+        isShow: true,
+        value: 2,
+        onClick: function(){
+            this.value += 1;
+        },
+        onShow: function() { this.isShow = !this.isShow}
+    };
+    var cd = alight.bootstrap([document.querySelector("#first"),document.querySelector("#second")], model)
+    cd.watch('value', function(value){
+        console.log('value',value)
+    })
+    //alight.applyBindings(model, )
+    //       alight.applyBindings(model, document.querySelector("#second"))
+
+</script>
+</body>
+</html>

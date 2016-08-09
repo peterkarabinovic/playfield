@@ -1,0 +1,140 @@
+<!doctype html>
+		
+<head>
+	<meta charset="utf-8">
+	<title></title>
+	<script type="text/javascript" src="http://static.visicom.ua/js/d3.js"></script>
+	<script type="text/javascript" src="http://static.visicom.ua/js/lib.js"></script>
+</head>
+<body>
+	<script type="text/javascript">
+			function fsm(){
+			    var machine = {},
+			        _states = {},
+			        _curState = null;
+			    
+			    machine.state = function(name){
+			        var s = {
+			            'events':{},
+			            'name': name
+			        };
+			        _states[name] = s;
+			        _curState = _curState || s;
+			        s = _.extend(s,machine);
+			        s.on = function(ename){
+			            var h = _.partial(event,s);
+			            s.events[ename] = h;
+			            return h;
+			        };
+			        
+			        s.substateOf = function(parentstate){
+			            var parent = _states[parentstate];
+			            if(parent)
+			                s = _.extend(s,parent);
+			            return s;
+			        };
+			        
+			        s.enter = function(){
+			            var h = s.on("enter");
+			            return h.exec.apply(h,_.toArray(arguments));
+			        };
+			        
+			        s.exit = function(){
+			            var h = s.on("exit");
+			            return h.exec.apply(h,_.toArray(arguments));
+			            return s;
+			        };
+			        return s;
+			    };
+			    
+			    function switchTo(sname){
+			        var oldState = _curState;
+			        var newState = _states[sname];
+			        if(!newState) {
+			            throw new Error('state ' + sname + ' not found');
+			        }
+			        
+			        if(machine.exit) machine.exit(newState,oldState);
+			        _curState = newState;
+			        if(machine.enter) machine.enter(newState,oldState);
+			        return newState;
+			    }
+			    
+			    function event(state){
+			        var e = _.extend({},state),
+			            _funcs = [],
+			            _to = null,
+			            _transitions = {};
+			    
+			        e.exec = function(){
+			            _funcs = _.toArray(arguments);
+			            return e;
+			        };
+			        
+			        e.to = function(_){
+			            _to = _;
+			            return e;
+			        };
+			        
+			        e.ifVal = function(val){
+			            var t = transition(e);
+			            _transitions[val] = t;
+			            return t;
+			        }
+			        
+			        e.fire = function(){
+			            var args = _.toArray(arguments);
+			            var to = null;
+			            if(_funcs.length > 0) {
+			                var result = null;
+			                for(var f in _funcs)
+			                    result = f.apply(f,args);
+			                if(!_.isEmpty(_transitions) )
+			                    to = _transitions[result];
+			                else
+			                    to = _to;
+			            }
+			            else
+			                to = _to;
+			            if(to)
+			                switchTo(to);
+			        };
+			        return e;
+			    }
+			    
+			    function transition(event){
+			        var t = _.extend({},event),
+			            _to = null;    
+			        
+			        t.to = function(_){
+			            _to = _;
+			            return t;
+			        };
+			    }
+
+			    return machine;
+			}
+
+
+
+        var fsm = fsm()
+            .state('OnHook')
+              .enter(new LogHandler("HookOn"))
+              .on(Event.hungUp).exec(this, "isPhoneWork")
+                              .ifVal(true).switchTo(tState.OffHook)
+                              .ifVal(false).switchTo(tState.PhoneBroken)
+           .state(tState.OffHook)
+              .enter(this,"clearNumbers")
+              .on(Event.pushButton).exec(this,"pushButton")
+                                   .ifVal(7).switchTo(tState.Calling)
+              .on(Event.hungDown).switchTo(tState.OnHook)
+           .state(tState.PhoneBroken)
+              .substateOf(tState.OffHook)
+              .enter(new LogHandler("PhoneBroken"))
+           .state(tState.Calling)
+              .substateOf(tState.OffHook)
+              .enter(new LogHandler("Calling"))
+           .build();
+
+	</script>
+</body>	

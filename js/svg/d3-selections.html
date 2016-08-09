@@ -1,0 +1,67 @@
+<!doctype html>
+		
+<head>
+	<meta charset="utf-8">
+	<title></title>
+	<script type="text/javascript" src="http://static.visicom.ua/js/d3.js"></script>
+	<script type="text/javascript" src="http://static.visicom.ua/js/lib.js"></script>
+</head>
+<body>
+	<ul>
+	</ul>
+	<script type="text/javascript">
+		var data = [{
+			name: "first",
+			list: [1]
+		},{
+			name: "second",
+			list: [2,2,2]
+		},{
+			name: "three",
+			list: [3,3,3]
+
+		},{
+			name: "first",
+			list: [4,4]
+		}];
+		var $li = d3.select("ul").selectAll('li').data(data);;
+		$li.enter()
+		   .append("li")
+		   .text(function(d){ return d.name;});
+
+		$li.call(updateDiv);
+
+	   _.delay(function(){
+	   		data[0].list = [1,2];
+	   		$li.call(updateDiv);
+	   },2000);
+
+	   _.delay(function(){
+	   		data[3].list = ["Кармина Бурана"];
+	   		$li.call(updateDiv);
+	   },4000);
+
+	   function updateDiv(selection){
+	   	  var $div = selection.selectAll('div').data(function(d){return d.list})
+	   	  $div.enter().append('div');
+	   	  $div.text(String);
+	   	  $div.exit().remove();
+	   }
+
+	   var data2 = _.chain(data).pluck('name').unique().map(function(d){ return { word : d }}).value();
+	   //alert(JSON.stringify(data2));
+
+	   var data3 = _.reduce(data,function(res,d){
+	   					res[d.name] = res[d.name] || [];
+	   					res[d.name].push(d);
+	   					res[d.name].name = d.name;
+	   					return res;
+	   				},{});
+	   //alert(JSON.stringify(data3));
+
+	   d3.select(window).on("blur",function(){ console.log("blur")});
+	   d3.select(window).on("focus",function(){ console.log("focus")});
+	   d3.select(window).on("visibilitychange",function(){ console.log("visibilitychange")});
+
+	</script>
+</body>

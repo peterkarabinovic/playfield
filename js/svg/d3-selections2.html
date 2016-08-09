@@ -1,0 +1,31 @@
+<!doctype html>
+		
+<head>
+	<meta charset="utf-8">
+	<title></title>
+	<script type="text/javascript" src="http://static.visicom.ua/js/d3.js?nomin=true"></script>
+	<script type="text/javascript" src="http://static.visicom.ua/js/lib.js"></script>
+</head>
+<body>
+	<ul>
+	</ul>
+	<script type="text/javascript">
+		var data = [{
+			name: "first"
+		},{
+			name: "second"
+		},{
+			name: "three"
+
+		},{
+			name: "first"
+		}];
+		var $ul = d3.select("ul");
+		var $li = $ul.selectAll('li.koo');
+
+		$li.data(data).enter()
+		   .append("li").classed('koo',true)
+		   .text(function(d){ return d.name;});
+
+	</script>
+</body>

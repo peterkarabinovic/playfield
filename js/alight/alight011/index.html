@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title></title>
+</head>
+<body>
+<div id="firstCtrl">
+    {{value}}
+    <button al-click="onClick()" al-disable="show_flag">click</button>
+    <button al-click="onShow()">show</button>
+
+    <div id="secondCtrl" al-if="isShow">
+        {{value}}
+        isShow = {{isShow}}
+        <button al-click="onClick()">click</button>
+        <button al-click="isShow = !isShow">show</button>
+    </div>
+    {{part_url}}
+
+
+</div>
+<script src="alight.0.11.js"></script>
+
+<script>
+
+    function secondCtrl()
+    {
+        var cd = alight.bootstrap('#secondCtrl', {
+            value: 2,
+            isShow: false,
+            onClick: function(){
+                this.value += 1;
+            },
+            show: function () {
+                this.isShow = !this.isShow;
+                cd.scan()
+            }
+        });
+        cd.watch('isShow', function(){
+           console.log('isShow', arguments)
+        })
+        return cd.scope;
+    };
+
+
+    function firstCtrl(secondCtrl){
+        var m = {
+            value: 1,
+            part_url: null,
+            show_flag: false,
+            onClick: function(){
+                this.value += 1;
+            },
+            onShow: function(){
+                this.show_flag = !this.show_flag;
+                this.part_url = ('part_one.html' === this.part_url ? 'part_two.html' : 'part_one.html')
+                secondCtrl.show()
+            }
+        }
+        alight.bootstrap('#firstCtrl', m);
+    }
+
+
+    firstCtrl(secondCtrl());
+
+
+</script>
+
+</body>
+</html>

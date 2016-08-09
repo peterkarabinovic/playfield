@@ -1,0 +1,7 @@
+<project name='ddd' default='main'>
+	<target name='main'>
+		<script language='javascript' setbeans='true'>
+			print(project.getReference("sql"));
+		</script>	
+	</target>	
+</project>
