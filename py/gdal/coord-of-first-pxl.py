@@ -6,7 +6,13 @@ import osr
 gtif = gdal.Open('n100x100.tif')
 gtif.GetGeoTransform()
 fwd = affine.Affine.from_gdal(*gtif.GetGeoTransform())
-first_pxl = fwd * (0,0)   # 2449013.3364116307, 5621543.351431573 
+
+# из пикселей в координаты
+first_pxl = fwd * (0,0)   
+print 'first_pxl',first_pxl
+# из координат в пиксели
+print ~fwd * first_pxl
+
 sp4326 = osr.SpatialReference()
 sp4326.ImportFromEPSG(4326)
 sp3857 = osr.SpatialReference(  gtif.GetProjectionRef() )
