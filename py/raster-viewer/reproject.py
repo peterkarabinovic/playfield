@@ -33,7 +33,7 @@ def reproject_tif(path):
             lb, rt = crsSrc_to_wgs([(src.bounds.left,src.bounds.bottom), (src.bounds.right, src.bounds.top)])
             clip_bounds = BoundingBox(lb[0], max(lb[1], tms_bounds.bottom), rt[0], min(rt[1], tms_bounds.top))
             clip_lb, clip_rt = crsWgs_to_src([(clip_bounds.left,clip_bounds.bottom),(clip_bounds.right,clip_bounds.top)])
-            src_clip_transform = src.transform
+            src_clip_transform = list(src.transform)
             src_clip_transform[3] = clip_rt[1]
 
             # теперь высчитываем окно которое нужно вырезать из исходных данных
@@ -42,7 +42,7 @@ def reproject_tif(path):
             row_stop = int(round( (~src.affine * clip_lb[:2])[1] ))
             window = ( (row_start, row_stop), (0,src.width) )
 
-            # пасчитываем геотраснформ для результата
+            # подсчитываем геотраснформ для результата
             crsWgs_to_tms = osr.CoordinateTransformation(wgs_crs, tms_crs).TransformPoints
             dst_lb, dst_rt = crsWgs_to_tms([(clip_bounds.left, clip_bounds.bottom), (clip_bounds.right, clip_bounds.top)])
             dst_width, dst_height = src.width, int(row_stop - row_start)
