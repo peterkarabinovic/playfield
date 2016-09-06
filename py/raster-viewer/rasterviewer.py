@@ -194,7 +194,9 @@ def run_web(raster_path, host='127.0.0.1', port=5000):
                 array = raster.read(window=window)
 
                 if raster.count == 1: # grid with on channel
-                    rgba = ScalarMappable(cmap='terrain', norm=SymLogNorm(1, vmin=min, vmax=max, clip=True)).to_rgba(array, alpha=0.7)
+                    rgba = ScalarMappable(cmap='autumn', norm=SymLogNorm(1, vmin=array.min(), vmax=array.max(), clip=True)).to_rgba(array[0], alpha=0.7)
+                    rgba *= 255
+                    rgba = np.asarray(rgba, dtype='uint8')
                 elif raster.count == 3: # image with RGB so add A
                     zeros = np.zeros((1, raster.height, raster.width), dtype=int)
                     rgba = np.append( array, zeros, axis=0)
@@ -202,6 +204,7 @@ def run_web(raster_path, host='127.0.0.1', port=5000):
                 rgba = empty_tile
 
             output = BytesIO()
+            Image.fromarray(rgba, mode='RGBA').save("7_79_94.png", 'PNG')
             Image.fromarray(rgba, mode='RGBA').save(output, 'PNG')
             output.seek(0)
             return flask.send_file(output, mimetype='image/png')
@@ -231,6 +234,7 @@ if __name__ == '__main__':
         else:
             assert len(glob.glob('*.tif')), "no GeoTiff files in current directory"
             path = glob.glob('*.tif')[0]
+        path = "bathymetry_3857.tif"
         assert os.path.exists(path), "file not exists {}".format(path)
 
         raster_path = reproject_tif(path)
