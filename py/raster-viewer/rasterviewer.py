@@ -9,10 +9,8 @@
 
 from __future__ import print_function
 
-###############################################################################
-#  Проверяем есть ли все необходимы модули
-###############################################################################
-import imp, sys
+import imp
+
 
 def check_module(name):
     try:
@@ -23,6 +21,7 @@ def check_module(name):
 
 check_module('numpy')
 check_module('osr')
+check_module('affine')
 check_module('rasterio')
 check_module('PIL')
 check_module('flask')
@@ -35,15 +34,15 @@ check_module('matplotlib')
 import os
 import sys
 import glob
+import affine
 import rasterio
-import osr
 import numpy as np
 
 ###############################################################################
 #  Перепроецирование растра если не EPSG:3857
 ###############################################################################
 from rasterio.coords import BoundingBox
-from rasterio.warp import reproject, RESAMPLING
+from rasterio.warp import reproject, RESAMPLING, calculate_default_transform
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -57,50 +56,31 @@ def reproject_tif(path):
 
             name, _ = os.path.splitext(path)
             dst_path = name + "_3857.tif"
+            dst_crs = {'init': 'epsg:3857'}
 
             if os.path.exists(dst_path):
                 return dst_path
 
-            src_crs = osr.SpatialReference()
-            src_crs.ImportFromWkt(src.crs.wkt)
-            wgs_crs = osr.SpatialReference()
-            wgs_crs.ImportFromEPSG(4326)
-            tms_crs = osr.SpatialReference()
-            tms_crs.ImportFromEPSG(3857)
+            dst_transform, dst_width, dst_height = calculate_default_transform(src.crs, dst_crs, src.width, src.height, *src.bounds)
+            kwargs = src.meta.copy()
+            kwargs.update({
+                'crs': dst_crs,
+                'transform': dst_transform,
+                'affine': dst_transform,
+                'width': dst_width,
+                'height': dst_height
+            })
 
-            # переводим bounds of src в wgs84 обрезаем по tms bounds и обратно в проекцкию источника
-            crsSrc_to_wgs = osr.CoordinateTransformation(src_crs, wgs_crs).TransformPoints
-            crsWgs_to_src = osr.CoordinateTransformation(wgs_crs, src_crs).TransformPoints
-            tms_bounds = BoundingBox(-179.99999999999955, -85.05112877980004, 179.99999999999955, 85.05112877979995)
-            lb, rt = crsSrc_to_wgs([(src.bounds.left, src.bounds.bottom), (src.bounds.right, src.bounds.top)])
-            clip_bounds = BoundingBox(lb[0], max(lb[1], tms_bounds.bottom), rt[0], min(rt[1], tms_bounds.top))
-            clip_lb, clip_rt = crsWgs_to_src([(clip_bounds.left, clip_bounds.bottom), (clip_bounds.right, clip_bounds.top)])
-            src_clip_transform = list(src.transform)
-            src_clip_transform[3] = clip_rt[1]
-
-            # теперь высчитываем окно которое нужно вырезать из исходных данных
-            inv = ~src.affine
-            row_start = int(round((~src.affine * clip_rt[:2])[1]))
-            row_stop = int(round((~src.affine * clip_lb[:2])[1]))
-            window = ((row_start, row_stop), (0, src.width))
-
-            # подсчитываем геотраснформ для результата
-            crsWgs_to_tms = osr.CoordinateTransformation(wgs_crs, tms_crs).TransformPoints
-            dst_lb, dst_rt = crsWgs_to_tms([(clip_bounds.left, clip_bounds.bottom), (clip_bounds.right, clip_bounds.top)])
-            dst_width, dst_height = src.width, int(row_stop - row_start)
-            dst_transform = [dst_lb[0], (dst_rt[0] - dst_lb[0]) / dst_width, 0, dst_rt[1], 0,(dst_rt[1] - dst_lb[1]) / dst_height]
-            if dst_transform[5] > 0:
-                dst_transform[5] = -dst_transform[5]
 
             dst = np.zeros((src.count, dst_height, dst_width), src.profile['dtype'])
 
             reproject(
-                src.read(window=window),
+                src.read(),
                 dst,
-                src_transform=src_clip_transform,
+                src_transform=src.affine,
                 dst_transform=dst_transform,
                 src_crs=src.crs,
-                dst_crs='EPSG:3857',
+                dst_crs=dst_crs,
                 resampling=RESAMPLING.nearest)
 
             with rasterio.open(dst_path, 'w',
@@ -150,13 +130,18 @@ index_html = """
 <script type="text/javascript">
     var map = new L.Map('map', {
         center: ${latlng},
-        zoom: 7,
+        zoom: 5,
         layers : [
             new L.TileLayer('http://tms{s}.visicom.ua/2.0.0/planet3/base_ru/{z}/{x}/{y}.png',{
                     maxZoom : 19,
                     tms : true,
                     attribution : 'Данные компании © <a href="http://visicom.ua/">Визиком</a>',
                     subdomains : '123'
+            }),
+
+            new L.TileLayer('http://127.0.0.1:${port}/{z}/{x}/{y}.png',{
+                    maxZoom : 19,
+                    tms : true
             })
         ]
     });
@@ -175,36 +160,81 @@ def run_web(raster_path, host='127.0.0.1', port=5000):
 
         invert_affine = ~raster.affine
         d = raster.read()
-        min, max = d.min(), d.max()
+        dtype=raster.profile['dtype']
+        vmin, vmax = d.min(), d.max()
+        nodata = raster.profile['nodata'] or vmin - 1
         del d
 
         app = flask.Flask(__name__)
 
-        @app.route('/<int:z>/<int:x>/<int:y>')
+        def tile_affines(tile_box):
+            # a = (tile_box.right - tile_box.left) / 256.0  # width of a pixel
+            # b = 0  # row rotation (typically zero)
+            # c = tile_box.left  # x-coordinate of the upper-left corner of the upper-left pixel
+            # d = 0  # column rotation (typically zero)
+            # e = - (tile_box.bottom - tile_box.top) / 256.0  # height of a pixel (typically negative)
+            # f = tile_box.top # y-coordinate of the of the upper-left corner of the upper-left pixel
+
+            # original_tile_affine
+            a1 = raster.affine._replace(c=tile_box.left,
+                                        f=tile_box.top)
+            # scaled_tile_affine
+            a2 = a1._replace(a=(tile_box.right - tile_box.left) / 256.0,
+                             e=(tile_box.bottom - tile_box.top) / 256.0)
+
+            return a1, a2
+
+
+
+
+        @app.route('/<int:z>/<int:x>/<int:y>.png')
         def tile(z,x,y):
             step = ( tms_box.right - tms_box.left ) / ( 2 ** z)
             tile_box = BoundingBox(tms_box.left + x * step,
                                     tms_box.bottom + y *step,
                                     tms_box.left + (x + 1)* step,
                                    tms_box.bottom + (y + 1)  * step)
+            rgba = empty_tile
             if not disjoint_bounds(raster.bounds,tile_box):
-                lt = invert_affine * (tile_box.left, tile_box.top)
-                rb = invert_affine * (tile_box.right, tile_box.bottom)
-                window = ( (lt[1],rb[1]), (lt[0],rb[0]) )
-                array = raster.read(window=window)
+                left_top = invert_affine * (tile_box.left, tile_box.top)
+                width = round((tile_box.right - tile_box.left) / raster.affine.a + 0.5)
+                height = round((tile_box.bottom - tile_box.top) / raster.affine.e+ 0.5)
+                right_bottom = invert_affine * (tile_box.right, tile_box.bottom)
+                if round(left_top[0]) < raster.shape[1] and round(left_top[1]) < raster.shape[0]:
+                    window = ((left_top[1], left_top[1] + height), (left_top[0], left_top[0]+width))
+                    array = raster.read(window=window)
+                    src_affine, dest_affine = tile_affines(tile_box)
+                    # получаем размеры в гео координатах для вырезаного участка
+                    offx, offy = src_affine * array.shape[:0:-1]
+                    # из полученых гео координат получаем размер результирующей картинки
+                    dest_x, dest_y = ~dest_affine * (offx, offy)
+                    dest_array = np.zeros((raster.count, round(dest_y), round(dest_x)), dtype=dtype)
+                    # ресайзим вырезанный растр
+                    reproject(array,
+                              dest_array,
+                              src_transform=src_affine,
+                              dst_transform=dest_affine)
+                    if dest_array.shape[1::] < (256,256):
+                        new_dest = np.empty([raster.count,256,256],dtype=dtype)
+                        new_dest.fill(nodata)
+                        dy,dx = dest_array.shape[1:]
+                        new_dest[:,:dy,:dx] = dest_array
+                        dest_array = new_dest
 
-                if raster.count == 1: # grid with on channel
-                    rgba = ScalarMappable(cmap='autumn', norm=SymLogNorm(1, vmin=array.min(), vmax=array.max(), clip=True)).to_rgba(array[0], alpha=0.7)
-                    rgba *= 255
-                    rgba = np.asarray(rgba, dtype='uint8')
-                elif raster.count == 3: # image with RGB so add A
-                    zeros = np.zeros((1, raster.height, raster.width), dtype=int)
-                    rgba = np.append( array, zeros, axis=0)
-            else:
-                rgba = empty_tile
+                    dest_array = np.ma.masked_values(dest_array, float(nodata), copy=False)
+
+
+
+                    if raster.count == 1: # grid with one channel
+                        rgba = ScalarMappable(cmap='gist_earth', norm=SymLogNorm(1, vmin=vmin, vmax=vmax, clip=True)).to_rgba(dest_array[0], alpha=0.5)
+                        rgba *= 255
+                        rgba = np.asarray(rgba, dtype='uint8')
+                    elif raster.count == 3: # image with RGB so add A
+                        zeros = np.zeros((1, raster.height, raster.width), dtype=int)
+                        rgba = np.append( array, zeros, axis=0)
+
 
             output = BytesIO()
-            Image.fromarray(rgba, mode='RGBA').save("7_79_94.png", 'PNG')
             Image.fromarray(rgba, mode='RGBA').save(output, 'PNG')
             output.seek(0)
             return flask.send_file(output, mimetype='image/png')
@@ -213,11 +243,12 @@ def run_web(raster_path, host='127.0.0.1', port=5000):
         @app.route('/')
         def index():
             global index_html
+            index_html = index_html.replace('${port}', str(port))
             index_html = index_html.replace('${raster_name}', os.path.basename(raster_path))
             index_html = index_html.replace('${latlng}', str(list(raster.lnglat())[::-1]))
             return index_html
 
-        gevent.spawn(lambda: webbrowser.open(('http://%s:%s') % (host, port)))
+        # gevent.spawn(lambda: webbrowser.open(('http://%s:%s') % (host, port)))
         server = wsgi.WSGIServer(('127.0.0.1', port), application=app, log=None)
         server.serve_forever()
 
@@ -234,11 +265,10 @@ if __name__ == '__main__':
         else:
             assert len(glob.glob('*.tif')), "no GeoTiff files in current directory"
             path = glob.glob('*.tif')[0]
-        path = "bathymetry_3857.tif"
         assert os.path.exists(path), "file not exists {}".format(path)
 
         raster_path = reproject_tif(path)
-        run_web(raster_path, port=5000)
+        run_web(raster_path, port=5001)
     except KeyboardInterrupt:
         raster.close()
     except Exception as ex:
