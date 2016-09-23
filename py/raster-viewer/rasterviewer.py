@@ -34,7 +34,6 @@ check_module('matplotlib')
 import os
 import sys
 import glob
-import affine
 import rasterio
 import numpy as np
 
@@ -101,8 +100,6 @@ def reproject_tif(path):
 ###############################################################################
 import flask
 from gevent import wsgi
-import webbrowser
-import gevent
 from PIL import Image
 from io import BytesIO
 from rasterio.coords import disjoint_bounds
