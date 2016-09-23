@@ -10,6 +10,10 @@
 from __future__ import print_function
 
 import imp
+import multiprocessing
+import webbrowser
+
+import gevent
 
 
 def check_module(name):
@@ -103,64 +107,79 @@ from gevent import wsgi
 from PIL import Image
 from io import BytesIO
 from rasterio.coords import disjoint_bounds
-
+from rasterio.plot import reshape_as_image
 from matplotlib.cm import ScalarMappable
 from matplotlib.colors import SymLogNorm
 
 
-index_html = """
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <title>${raster_name}</title>
-    <link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet-0.7.2/leaflet.css">
-    <style type="text/css">
-        html, body { height: 100%; margin: 0;}
-        #map {min-height: 100%;}
-    </style>
-</head>
-<body>
-<div id="map">
 
-<script src="http://cdn.leafletjs.com/leaflet-0.7.2/leaflet.js"></script>
-<script type="text/javascript">
-    var map = new L.Map('map', {
-        center: ${latlng},
-        zoom: 5,
-        layers : [
-            new L.TileLayer('http://tms{s}.visicom.ua/2.0.0/planet3/base_ru/{z}/{x}/{y}.png',{
-                    maxZoom : 19,
-                    tms : true,
-                    attribution : 'Данные компании © <a href="http://visicom.ua/">Визиком</a>',
-                    subdomains : '123'
-            }),
+def run_index_webserver(raster_path, lnglat, host, port):
 
-            new L.TileLayer('http://127.0.0.1:${port}/{z}/{x}/{y}.png',{
-                    maxZoom : 19,
-                    tms : true
-            })
-        ]
-    });
-</script>
-</body>
-</html>
-"""
+    index_html = """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <title>${raster_name}</title>
+        <link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet-0.7.2/leaflet.css">
+        <style type="text/css">
+            html, body { height: 100%; margin: 0;}
+            #map {min-height: 100%;}
+        </style>
+    </head>
+    <body>
+    <div id="map">
+
+    <script src="http://cdn.leafletjs.com/leaflet-0.7.2/leaflet.js"></script>
+    <script type="text/javascript">
+        var map = new L.Map('map', {
+            center: ${latlng},
+            zoom: 5,
+            layers : [
+                new L.TileLayer('http://tms{s}.visicom.ua/2.0.0/planet3/base_ru/{z}/{x}/{y}.png',{
+                        maxZoom : 19,
+                        tms : true,
+                        attribution : 'Данные компании © <a href="http://visicom.ua/">Визиком</a>',
+                        subdomains : '123'
+                }),
+
+                new L.TileLayer('http://${host}:${port}{s}/{z}/{x}/{y}.png',{
+                        maxZoom : 19,
+                        tms : true,
+                        subdomains : '123'
+                })
+            ]
+        });
+    </script>
+    </body>
+    </html>
+    """
+
+    app = flask.Flask(__name__ + "_index")
+
+    @app.route('/')
+    def index():
+        html = index_html
+        html = html.replace('${host}', host)
+        html = html.replace('${port}', str(port)[:-1])
+        html = html.replace('${raster_name}', os.path.basename(raster_path))
+        html = html.replace('${latlng}', str(list(lnglat)[::-1]))
+        return html
+
+    gevent.spawn(lambda: webbrowser.open('http://{}:{}'.format(host, port)))
+    server = wsgi.WSGIServer((host, port), application=app, log=None)
+    server.serve_forever()
 
 
-def run_web(raster_path, host='127.0.0.1', port=5000):
+def run_title_webserver(raster_path, vmin, vmax, host, port):
 
     tms_box = BoundingBox(-20037508.3427892, -20037508.3427808, 20037508.3427892, 20037508.3427807)
     empty_tile = np.zeros((256, 256, 4), dtype='uint8')
 
-    with rasterio.open(raster_path,'r') as raster:
-
+    with rasterio.open(raster_path, 'r') as raster:
         invert_affine = ~raster.affine
-        d = raster.read()
         dtype=raster.profile['dtype']
-        vmin, vmax = d.min(), d.max()
         nodata = raster.profile['nodata'] or vmin - 1
-        del d
 
         app = flask.Flask(__name__)
 
@@ -192,6 +211,7 @@ def run_web(raster_path, host='127.0.0.1', port=5000):
                                     tms_box.left + (x + 1)* step,
                                    tms_box.bottom + (y + 1)  * step)
             rgba = empty_tile
+
             if not disjoint_bounds(raster.bounds,tile_box):
                 left_top = invert_affine * (tile_box.left, tile_box.top)
                 width = round((tile_box.right - tile_box.left) / raster.affine.a + 0.5)
@@ -205,7 +225,7 @@ def run_web(raster_path, host='127.0.0.1', port=5000):
                     offx, offy = src_affine * array.shape[:0:-1]
                     # из полученых гео координат получаем размер результирующей картинки
                     dest_x, dest_y = ~dest_affine * (offx, offy)
-                    dest_array = np.zeros((raster.count, round(dest_y), round(dest_x)), dtype=dtype)
+                    dest_array = np.zeros((raster.count, min(dest_y,256), min(dest_x,256)), dtype=dtype)
                     # ресайзим вырезанный растр
                     reproject(array,
                               dest_array,
@@ -219,34 +239,27 @@ def run_web(raster_path, host='127.0.0.1', port=5000):
                         dest_array = new_dest
 
                     dest_array = np.ma.masked_values(dest_array, float(nodata), copy=False)
-
-
-
                     if raster.count == 1: # grid with one channel
-                        rgba = ScalarMappable(cmap='gist_earth', norm=SymLogNorm(1, vmin=vmin, vmax=vmax, clip=True)).to_rgba(dest_array[0], alpha=0.5)
+
+                        rgba = ScalarMappable(cmap='gist_earth', norm=SymLogNorm(1, vmin=vmin, vmax=vmax, clip=True)).to_rgba(dest_array[0], alpha=0.7)
                         rgba *= 255
                         rgba = np.asarray(rgba, dtype='uint8')
                     elif raster.count == 3: # image with RGB so add A
-                        zeros = np.zeros((1, raster.height, raster.width), dtype=int)
-                        rgba = np.append( array, zeros, axis=0)
-
+                        rgba = np.empty((dest_array.shape[1], dest_array.shape[2],4), dtype='uint8')
+                        rgba.fill(127)
+                        dest_array = reshape_as_image(dest_array)
+                        rgba[:,:,:-1] = dest_array
 
             output = BytesIO()
             Image.fromarray(rgba, mode='RGBA').save(output, 'PNG')
             output.seek(0)
-            return flask.send_file(output, mimetype='image/png')
+            response = flask.send_file(output, mimetype='image/png')
+            response.headers['Cache-Control'] = 'no-cache'
+            return response
 
 
-        @app.route('/')
-        def index():
-            global index_html
-            index_html = index_html.replace('${port}', str(port))
-            index_html = index_html.replace('${raster_name}', os.path.basename(raster_path))
-            index_html = index_html.replace('${latlng}', str(list(raster.lnglat())[::-1]))
-            return index_html
 
-        # gevent.spawn(lambda: webbrowser.open(('http://%s:%s') % (host, port)))
-        server = wsgi.WSGIServer(('127.0.0.1', port), application=app, log=None)
+        server = wsgi.WSGIServer((host, port), application=app, log=None)
         server.serve_forever()
 
 
@@ -254,7 +267,8 @@ def run_web(raster_path, host='127.0.0.1', port=5000):
 #  Main
 ###############################################################################
 if __name__ == '__main__':
-
+    host = '10.10.41.9'
+    port = 5000
     raster = None
     try:
         if len(sys.argv) > 1:
@@ -263,10 +277,36 @@ if __name__ == '__main__':
             assert len(glob.glob('*.tif')), "no GeoTiff files in current directory"
             path = glob.glob('*.tif')[0]
         assert os.path.exists(path), "file not exists {}".format(path)
-
+        path = 'marinka_img.tif'
         raster_path = reproject_tif(path)
-        run_web(raster_path, port=5001)
+
+        vmin, vmax = 0, 0
+        lnglat = (0,0)
+        with rasterio.open(raster_path, 'r') as raster:
+            d = raster.read()
+            vmin, vmax = d.min(), d.max()
+            lnglat = raster.lnglat()
+            del d
+            webservers = []
+        webservers.append( multiprocessing.Process(
+            target=run_index_webserver,
+            args=(raster_path, lnglat, host, port)
+        ))
+
+        for i in range(1,4):
+            webservers.append(multiprocessing.Process(
+                target=run_title_webserver,
+                args=(raster_path, vmin, vmax, host, port + i)
+            ))
+
+        for ws in webservers:
+            ws.start()
+
+        for ws in webservers:
+            ws.join()
+
+
     except KeyboardInterrupt:
         raster.close()
     except Exception as ex:
-        print("Error: {}".format(str(ex)))
+        print("{}: {}".format(type(ex).__name__, str(ex)))
