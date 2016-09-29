@@ -179,7 +179,7 @@ def run_title_webserver(raster_path, vmin, vmax, host, port):
     with rasterio.open(raster_path, 'r') as raster:
         invert_affine = ~raster.affine
         dtype=raster.profile['dtype']
-        nodata = raster.profile['nodata'] or vmin - 1
+        nodata = raster.profile['nodata'] or None
 
         app = flask.Flask(__name__)
 
@@ -238,7 +238,7 @@ def run_title_webserver(raster_path, vmin, vmax, host, port):
                         new_dest[:,:dy,:dx] = dest_array
                         dest_array = new_dest
 
-                    dest_array = np.ma.masked_values(dest_array, float(nodata), copy=False)
+                    dest_array = np.ma.masked_values(dest_array, nodata, copy=False)
                     if raster.count == 1: # grid with one channel
 
                         rgba = ScalarMappable(cmap='gist_earth', norm=SymLogNorm(1, vmin=vmin, vmax=vmax, clip=True)).to_rgba(dest_array[0], alpha=0.7)
