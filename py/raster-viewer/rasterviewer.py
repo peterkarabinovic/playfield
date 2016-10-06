@@ -194,15 +194,15 @@ def run_title_webserver(raster_path, vmin, vmax, host, port):
             # original_tile_affine
             left = max(raster.affine.c , tile_box.left)
             top = min(raster.affine.f, tile_box.top)
-            a1 = raster.affine._replace(c=left,
+            src = raster.affine._replace(c=left,
                                         f=top)
             # scaled_tile_affine
-            a2 = a1._replace(c=tile_box.left,
+            dest = src._replace(c=tile_box.left,
                              f=tile_box.top,
                              a=(tile_box.right - tile_box.left) / 256.0,
                              e=(tile_box.bottom - tile_box.top) / 256.0)
 
-            return a1, a2
+            return src, dest
 
 
 
@@ -282,7 +282,7 @@ def run_title_webserver(raster_path, vmin, vmax, host, port):
 #  Main
 ###############################################################################
 if __name__ == '__main__':
-    host = '10.10.41.9'
+    host = '127.0.0.1'
     port = 5000
     raster = None
     try:
