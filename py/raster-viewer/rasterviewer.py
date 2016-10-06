@@ -12,8 +12,7 @@ from __future__ import print_function
 import imp
 import multiprocessing
 import webbrowser
-
-import gevent
+import math
 
 
 def check_module(name):
@@ -24,7 +23,6 @@ def check_module(name):
         sys.exit(1)
 
 check_module('numpy')
-check_module('osr')
 check_module('affine')
 check_module('rasterio')
 check_module('PIL')
@@ -40,6 +38,7 @@ import sys
 import glob
 import rasterio
 import numpy as np
+import gevent
 
 ###############################################################################
 #  Перепроецирование растра если не EPSG:3857
@@ -113,7 +112,7 @@ from matplotlib.colors import SymLogNorm
 
 
 
-def run_index_webserver(raster_path, lnglat, host, port):
+def run_index_webserver(raster_path, lnglat, zoom, host, port):
 
     index_html = """
     <!DOCTYPE html>
@@ -134,7 +133,7 @@ def run_index_webserver(raster_path, lnglat, host, port):
     <script type="text/javascript">
         var map = new L.Map('map', {
             center: ${latlng},
-            zoom: 5,
+            zoom: ${zoom},
             layers : [
                 new L.TileLayer('http://tms{s}.visicom.ua/2.0.0/planet3/base_ru/{z}/{x}/{y}.png',{
                         maxZoom : 19,
@@ -164,6 +163,7 @@ def run_index_webserver(raster_path, lnglat, host, port):
         html = html.replace('${port}', str(port)[:-1])
         html = html.replace('${raster_name}', os.path.basename(raster_path))
         html = html.replace('${latlng}', str(list(lnglat)[::-1]))
+        html = html.replace('${zoom}', str(zoom))
         return html
 
     gevent.spawn(lambda: webbrowser.open('http://{}:{}'.format(host, port)))
@@ -179,7 +179,7 @@ def run_title_webserver(raster_path, vmin, vmax, host, port):
     with rasterio.open(raster_path, 'r') as raster:
         invert_affine = ~raster.affine
         dtype=raster.profile['dtype']
-        nodata = raster.profile['nodata'] or None
+        nodata = raster.profile['nodata']
 
         app = flask.Flask(__name__)
 
@@ -192,10 +192,14 @@ def run_title_webserver(raster_path, vmin, vmax, host, port):
             # f = tile_box.top # y-coordinate of the of the upper-left corner of the upper-left pixel
 
             # original_tile_affine
-            a1 = raster.affine._replace(c=tile_box.left,
-                                        f=tile_box.top)
+            left = max(raster.affine.c , tile_box.left)
+            top = min(raster.affine.f, tile_box.top)
+            a1 = raster.affine._replace(c=left,
+                                        f=top)
             # scaled_tile_affine
-            a2 = a1._replace(a=(tile_box.right - tile_box.left) / 256.0,
+            a2 = a1._replace(c=tile_box.left,
+                             f=tile_box.top,
+                             a=(tile_box.right - tile_box.left) / 256.0,
                              e=(tile_box.bottom - tile_box.top) / 256.0)
 
             return a1, a2
@@ -214,31 +218,39 @@ def run_title_webserver(raster_path, vmin, vmax, host, port):
 
             if not disjoint_bounds(raster.bounds,tile_box):
                 left_top = invert_affine * (tile_box.left, tile_box.top)
-                width = round((tile_box.right - tile_box.left) / raster.affine.a + 0.5)
-                height = round((tile_box.bottom - tile_box.top) / raster.affine.e+ 0.5)
+                left_top = max(left_top[0],0), max(left_top[1],0)
                 right_bottom = invert_affine * (tile_box.right, tile_box.bottom)
                 if round(left_top[0]) < raster.shape[1] and round(left_top[1]) < raster.shape[0]:
-                    window = ((left_top[1], left_top[1] + height), (left_top[0], left_top[0]+width))
+
+                    window = ((math.floor(left_top[1]), math.ceil(right_bottom[1])),
+                              (math.floor(left_top[0]), math.ceil(right_bottom[0])))
                     array = raster.read(window=window)
                     src_affine, dest_affine = tile_affines(tile_box)
-                    # получаем размеры в гео координатах для вырезаного участка
-                    offx, offy = src_affine * array.shape[:0:-1]
-                    # из полученых гео координат получаем размер результирующей картинки
-                    dest_x, dest_y = ~dest_affine * (offx, offy)
-                    dest_array = np.zeros((raster.count, min(dest_y,256), min(dest_x,256)), dtype=dtype)
-                    # ресайзим вырезанный растр
+                    dest_array = np.zeros((raster.count, 256, 256), dtype=dtype)
+                    if nodata:
+                        dest_array.fill(nodata)
                     reproject(array,
                               dest_array,
                               src_transform=src_affine,
                               dst_transform=dest_affine)
-                    if dest_array.shape[1::] < (256,256):
-                        new_dest = np.empty([raster.count,256,256],dtype=dtype)
-                        new_dest.fill(nodata)
-                        dy,dx = dest_array.shape[1:]
-                        new_dest[:,:dy,:dx] = dest_array
-                        dest_array = new_dest
+                    # из полученых гео координат получаем размер результирующей картинки
+                    dest_left, dest_top = ~dest_affine * src_affine * (0,0)
+                    dest_right, dest_bottom = ~dest_affine * src_affine * array.shape[:0:-1]
+                    dest_left, dest_top, dest_right, dest_bottom = map(round,(dest_left, dest_top, dest_right, dest_bottom))
+                    # ресайзим вырезанный растр
+                    # если оригинальная картинка на этом масштабе меньше чем 256х256
+                    if dest_right - dest_left < 256 or dest_bottom - dest_top < 256:
+                        if nodata is None:
+                            mask = np.ma.getmaskarray(dest_array)
+                            mask[:,dest_bottom:] = True
+                            mask[:,:,dest_right:] = True
+                            mask[:,:dest_top] = True
+                            mask[:,:,:dest_left] = True
+                            dest_array = np.ma.masked_array(dest_array,mask=mask)
 
-                    dest_array = np.ma.masked_values(dest_array, nodata, copy=False)
+                    if not np.ma.is_masked(dest_array) and nodata:
+                        dest_array = np.ma.masked_values(dest_array, nodata, copy=False)
+
                     if raster.count == 1: # grid with one channel
 
                         rgba = ScalarMappable(cmap='gist_earth', norm=SymLogNorm(1, vmin=vmin, vmax=vmax, clip=True)).to_rgba(dest_array[0], alpha=0.7)
@@ -246,9 +258,12 @@ def run_title_webserver(raster_path, vmin, vmax, host, port):
                         rgba = np.asarray(rgba, dtype='uint8')
                     elif raster.count == 3: # image with RGB so add A
                         rgba = np.empty((dest_array.shape[1], dest_array.shape[2],4), dtype='uint8')
-                        rgba.fill(127)
-                        dest_array = reshape_as_image(dest_array)
-                        rgba[:,:,:-1] = dest_array
+                        rgba.fill(255 )
+                        rgba[:,:,:-1] = reshape_as_image(dest_array)
+                        if np.ma.is_masked(dest_array):
+                            rgba[..., 3] = (~dest_array.mask[0]).astype('uint8') * (255 )
+                            pass
+
 
             output = BytesIO()
             Image.fromarray(rgba, mode='RGBA').save(output, 'PNG')
@@ -277,7 +292,7 @@ if __name__ == '__main__':
             assert len(glob.glob('*.tif')), "no GeoTiff files in current directory"
             path = glob.glob('*.tif')[0]
         assert os.path.exists(path), "file not exists {}".format(path)
-        path = 'marinka_img.tif'
+        # path = 'marinka_img.tif'
         raster_path = reproject_tif(path)
 
         vmin, vmax = 0, 0
@@ -286,11 +301,12 @@ if __name__ == '__main__':
             d = raster.read()
             vmin, vmax = d.min(), d.max()
             lnglat = raster.lnglat()
+            zoom = math.ceil( math.log(20037508.3427892*2 / (raster.res[1] * raster.width), 2) )
             del d
             webservers = []
         webservers.append( multiprocessing.Process(
             target=run_index_webserver,
-            args=(raster_path, lnglat, host, port)
+            args=(raster_path, lnglat, zoom, host, port)
         ))
 
         for i in range(1,4):
