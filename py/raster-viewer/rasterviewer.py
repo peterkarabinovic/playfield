@@ -144,6 +144,7 @@ def run_index_webserver(raster_path, lnglat, zoom, host, port):
 
                 new L.TileLayer('http://${host}:${port}{s}/{z}/{x}/{y}.png',{
                         maxZoom : 19,
+                        opacity: 0.5,
                         tms : true,
                         subdomains : '123'
                 })
@@ -227,7 +228,7 @@ def run_title_webserver(raster_path, vmin, vmax, host, port):
                     array = raster.read(window=window)
                     src_affine, dest_affine = tile_affines(tile_box)
                     dest_array = np.zeros((raster.count, 256, 256), dtype=dtype)
-                    if nodata:
+                    if nodata is not None:
                         dest_array.fill(nodata)
                     reproject(array,
                               dest_array,
@@ -248,7 +249,7 @@ def run_title_webserver(raster_path, vmin, vmax, host, port):
                             mask[:,:,:dest_left] = True
                             dest_array = np.ma.masked_array(dest_array,mask=mask)
 
-                    if not np.ma.is_masked(dest_array) and nodata:
+                    if not np.ma.is_masked(dest_array) and nodata is not None:
                         dest_array = np.ma.masked_values(dest_array, nodata, copy=False)
 
                     if raster.count == 1: # grid with one channel
@@ -292,7 +293,7 @@ if __name__ == '__main__':
             assert len(glob.glob('*.tif')), "no GeoTiff files in current directory"
             path = glob.glob('*.tif')[0]
         assert os.path.exists(path), "file not exists {}".format(path)
-        # path = 'marinka_img.tif'
+        path = 'RGB.byte.tif'
         raster_path = reproject_tif(path)
 
         vmin, vmax = 0, 0
