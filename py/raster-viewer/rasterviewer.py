@@ -167,12 +167,12 @@ def run_index_webserver(raster_path, lnglat, zoom, host, port):
         html = html.replace('${zoom}', str(zoom))
         return html
 
-    gevent.spawn(lambda: webbrowser.open('http://{}:{}'.format(host, port)))
+    # gevent.spawn(lambda: webbrowser.open('http://{}:{}'.format(host, port)))
     server = wsgi.WSGIServer((host, port), application=app, log=None)
     server.serve_forever()
 
 
-def run_title_webserver(raster_path, vmin, vmax, host, port):
+def run_title_webserver(raster_path, host, port):
 
     tms_box = BoundingBox(-20037508.3427892, -20037508.3427808, 20037508.3427892, 20037508.3427807)
     empty_tile = np.zeros((256, 256, 4), dtype='uint8')
@@ -183,6 +183,17 @@ def run_title_webserver(raster_path, vmin, vmax, host, port):
         nodata = raster.profile['nodata']
 
         app = flask.Flask(__name__)
+
+        def minmax():
+            if minmax.vmin is None:
+                d = raster.read()
+                minmax.vmin = d.min()
+                minmax.max = d.max()
+                del d
+            return minmax.vmin, minmax.vmax
+        minmax.vmin = None
+        minmax.vmax = None
+
 
         def tile_affines(tile_box):
             # a = (tile_box.right - tile_box.left) / 256.0  # width of a pixel
@@ -253,7 +264,7 @@ def run_title_webserver(raster_path, vmin, vmax, host, port):
                         dest_array = np.ma.masked_values(dest_array, nodata, copy=False)
 
                     if raster.count == 1: # grid with one channel
-
+                        vmin, vmax = minmax()
                         rgba = ScalarMappable(cmap='gist_earth', norm=SymLogNorm(1, vmin=vmin, vmax=vmax, clip=True)).to_rgba(dest_array[0], alpha=0.7)
                         rgba *= 255
                         rgba = np.asarray(rgba, dtype='uint8')
@@ -293,18 +304,14 @@ if __name__ == '__main__':
             assert len(glob.glob('*.tif')), "no GeoTiff files in current directory"
             path = glob.glob('*.tif')[0]
         assert os.path.exists(path), "file not exists {}".format(path)
-        path = 'RGB.byte.tif'
+        path = 'D:\\data\\sentinel_ua_27GB\\mos8bit.tif'
         raster_path = reproject_tif(path)
 
-        vmin, vmax = 0, 0
-        lnglat = (0,0)
         with rasterio.open(raster_path, 'r') as raster:
-            d = raster.read()
-            vmin, vmax = d.min(), d.max()
             lnglat = raster.lnglat()
-            zoom = math.ceil( math.log(20037508.3427892*2 / (raster.res[1] * raster.width), 2) )
-            del d
-            webservers = []
+            zoom = max(10,math.ceil( math.log(20037508.3427892*2 / (raster.res[1] * raster.width), 2) ) + 7)
+
+        webservers = []
         webservers.append( multiprocessing.Process(
             target=run_index_webserver,
             args=(raster_path, lnglat, zoom, host, port)
@@ -313,7 +320,7 @@ if __name__ == '__main__':
         for i in range(1,4):
             webservers.append(multiprocessing.Process(
                 target=run_title_webserver,
-                args=(raster_path, vmin, vmax, host, port + i)
+                args=(raster_path, host, port + i)
             ))
 
         for ws in webservers:
