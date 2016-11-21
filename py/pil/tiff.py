@@ -1,7 +1,9 @@
 # coding: utf-8
-from PIL import Image
 import numpy as np
+from PIL import Image
+
 im = Image.open('a_image.tif')
 im.show()
 
-a = np.array(im)
+x = np.array(im)
+print x
