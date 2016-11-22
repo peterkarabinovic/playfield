@@ -7,13 +7,19 @@
 /****************************************** 
  * Actions
  *******************************************/
+var unique_id = 0;
 function addToDo(text){
-    return { type: 'ADD_TODO', text: text }
+    return { type: 'ADD_TODO', text: text, id: unique_id++ }
 }
 
-function toggleTodo(index){
-    return { type: "TOGGLE_TODO", index: index}
+function toggleTodo(id){
+    return { type: "TOGGLE_TODO", id: id}
 }
+
+function deleteTodo(id){
+    return { type: "DELETE_TODO", id: id}
+}
+
 
 var FILTERS = ["show_all", "show_completed", "show_active"]
 
@@ -32,16 +38,20 @@ function setVisibility(filter){
     switch(action.type)
     {
         case "ADD_TODO":
-            return state.concat( [ { text: action.text, completed: false }] );
+            return state.concat( [ { text: action.text, completed: false, id: action.id }] );
 
         case "TOGGLE_TODO":
-            return state.map( function(it, index){
-                if(index === action.index){
+            return state.map( function(it){
+                if(it.id === action.id){
                     return _.assign({},it,{ completed: !it.completed})
                 }
                 return it;
             });
 
+        case "DELETE_TODO":
+            return state.filter(function(it){
+                return it.id !== action.id;
+            });
         default:
             return state;
     }    
@@ -67,7 +77,6 @@ function setVisibility(filter){
  *******************************************/
 var store = Redux.createStore(todoApp)
 
-export default store;  
 
 
 
