@@ -13,6 +13,9 @@
         .todolist li a {
             margin-left: 0.5em;
         }
+        .visibility {
+            display: block;
+        }
         .visibility li {
             float: left;
             list-style-type: none;
@@ -31,16 +34,18 @@
     <div id='d3' class='view'>
         <input type="text"/>
         <button>+</button>
-        <ul class="todolist"></ul>
         <ul class="visibility"></ul>
+        <br/>
+        <ul class="todolist"></ul>
     </div>
 
     <div id='mithril' class='view'>
         <input type="text"/>
         <button>+</button>
-        <ul class="todolist"></ul>
         <ul class="visibility"></ul>
-    </div>
+        <br/>
+        <ul class="todolist"></ul>
+   </div>
 
     <script src="lib/redux.js"></script>
     <script src="lib/lodash.js"></script>
@@ -50,6 +55,9 @@
     <script src="lib/d3.js"></script>
     <script src="view-d3.js"></script>
 
+    <!-- View with mithril.js -->
+    <script src="lib/mithril.js"></script>
+    <script src="view-mithril.js"></script>
 
 
 
