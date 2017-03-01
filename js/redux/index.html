@@ -2,21 +2,61 @@
 <html>
 <head>
     <title></title>
+    <style>
+        .view {
+            float: left;
+        }
+        .completed {
+            color: gray;
+            text-decoration: line-through;
+        }
+        .todolist li a {
+            margin-left: 0.5em;
+        }
+        .visibility li {
+            float: left;
+            list-style-type: none;
+            margin-right: 0.5em;
+        }
+        .disable-link {
+            pointer-events: none;
+            cursor: default;
+            opacity: 0.5;   
+            text-decoration: none;         
+        }
+    </style>
 </head>
 <body>
 
-    <div>
+    <div id='d3' class='view'>
         <input type="text"/>
         <button>+</button>
-        <ul>
+        <ul class="todolist"></ul>
+        <ul class="visibility"></ul>
+    </div>
 
-        </ul>
+    <div id='mithril' class='view'>
+        <input type="text"/>
+        <button>+</button>
+        <ul class="todolist"></ul>
+        <ul class="visibility"></ul>
     </div>
 
     <script src="lib/redux.js"></script>
     <script src="lib/lodash.js"></script>
+    <script src="app.js"></script>
+
+    <!-- View with d3.js -->
     <script src="lib/d3.js"></script>
+<<<<<<< HEAD
     <script src="lib/m.js"></script>
     <script src="view2.js"></script>
+=======
+    <script src="view-d3.js"></script>
+
+
+
+
+>>>>>>> 18159b012b13c06c012f81bab2381c9b18535bbe
 </body>
 </html>
