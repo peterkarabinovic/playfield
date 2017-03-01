@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Редактор плана</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style type="text/css">
+    html,body {font-family: "Roboto", sans-serif}
+    .w3-navbar li a {
+        padding-top: 12px;
+        padding-bottom: 12px;
+    }
+    ul {
+        font-size: large;
+        cursor: move;
+    }        
+     </style>
+</head>
+<body ng-app="myapp">
+
+<div ng-controller="MainController">
+    <ul ui-on-drop="onDrop($event,$data,layers)">
+        <li ui-draggable="true" 
+            drag="l"
+            on-drop-success="dropSuccessHandler($event,$index,layers)" 
+            ng-repeat="l in layers">{{l}}</li>
+    </ul>
+    <div>
+        {{layers}}
+    </div>
+</div>
+
+<script src="angular.js"></script>
+<script src="draganddrop.js"></script>
+<script>
+
+var app = angular.module('myapp',['ang-drag-drop'])
+
+app.controller('MainController', function($scope){
+    $scope.layers = [ 'poi', 'bounds', 'hydro']
+    $scope.onDrop = function($event,$data,layers){
+        console.log('onDrop', $event,$data,layers)
+    }
+
+    $scope.dropSuccessHandler = function($event,index,layers){
+        console.log('dropSuccessHandler', $event,index,layers)
+    }
+
+})
+
+</script>
+
+</body>
+</html>
