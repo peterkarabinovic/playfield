@@ -2,7 +2,7 @@ import numpy as np
 
 a = np.ma.masked_values(np.arange(10, 0, -1), 3 )
 
-b = np.ma.masked_array(np.ones(10, dtype=a.dtype), [1,0,0,1,0,0,0,1,0,0] )
+b = np.ma.masked_array(np.ones(10, dtype=a.dtype), [1, 0, 0, 1, 0, 0, 0, 1, 0, 0])
 
 # print a.filled(b)
 # print a
