@@ -1,28 +1,28 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <meta charset='utf-8' />
-    <title></title>
-    <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' />
-    <script src='https://api.tiles.mapbox.com/mapbox-gl-js/v0.12.3/mapbox-gl.js'></script>
-    <link href='https://api.tiles.mapbox.com/mapbox-gl-js/v0.12.3/mapbox-gl.css' rel='stylesheet' />
-    <style>
-        body { margin:0; padding:0; }
-        #map { position:absolute; top:0; bottom:0; width:100%; }
-    </style>
+  <meta charset=utf-8 />
+  <title></title>
+  <script src='https://api.mapbox.com/mapbox.js/v2.4.0/mapbox.js'></script>
+  <link href='https://api.mapbox.com/mapbox.js/v2.4.0/mapbox.css' rel='stylesheet' />
+  <style>
+    body { margin:0; padding:0; }
+    .map { position:absolute; top:0; bottom:0; width:100%; }
+  </style>
 </head>
 <body>
-
-<div id='map'></div>
+<div id='map' class='map'> </div>
 <script>
-mapboxgl.accessToken = 'pk.eyJ1IjoicGV0cjEyMyIsImEiOiJLVVl1bERnIn0.I9Lj8gyeElh5Q5tDepa_Dg';
-var map = new mapboxgl.Map({
-    container: 'map', // container id
-    style: 'mapbox://styles/mapbox/streets-v8', //stylesheet location
-    center: [50, 30], // starting position
-    zoom: 9 // starting zoom
-});
+L.mapbox.accessToken = '<your access token here>';
+var tilejson = {
+  tiles: ['https://api.mapbox.com/v4/mapbox.streets/{z}/{x}/{y}.png?access_token=pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpbG10dnA3NzY3OTZ0dmtwejN2ZnUycjYifQ.1W5oTOnWXQ9R1w8u3Oo1yA'],
+  minzoom: 0,
+  maxzoom: 18
+};
+L.mapbox.map('map', tilejson, {
+  scrollWheelZoom: false
+}).setView([43.6519, -79.3852], 15);
 </script>
-
 </body>
 </html>
+
