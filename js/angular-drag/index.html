@@ -19,11 +19,11 @@
 <body ng-app="myapp">
 
 <div ng-controller="MainController">
-    <ul ui-on-drop="onDrop($event,$data,layers)">
-        <li ui-draggable="true" 
-            drag="l"
-            on-drop-success="dropSuccessHandler($event,$index,layers)" 
-            ng-repeat="l in layers">{{l}}</li>
+    <ul ui-on-drop="onDrop($event,$data)">
+        <li ng-repeat="la in layers"
+            ui-draggable="true" 
+            drag="la"
+            >{{la}}</li>
     </ul>
     <div>
         {{layers}}
@@ -38,14 +38,23 @@ var app = angular.module('myapp',['ang-drag-drop'])
 
 app.controller('MainController', function($scope){
     $scope.layers = [ 'poi', 'bounds', 'hydro']
-    $scope.onDrop = function($event,$data,layers){
-        console.log('onDrop', $event,$data,layers)
-    }
+    $scope.onDrop = function($event,source) 
+    {
+        var target = angular.element($event.srcElement).text();
+        var source_index = $scope.layers.indexOf(source);
+        var target_index = $scope.layers.indexOf(target);
+        if(source_index == -1 || target_index == -1)  
+            return
+        if(source_index > target_index) {
+            $scope.layers.splice(source_index, 1);
+            $scope.layers.splice(target_index, 0, source);
+        }
+        else {
+            $scope.layers.splice(target_index+1, 0, source);   
+            $scope.layers.splice(source_index, 1);
+        }
 
-    $scope.dropSuccessHandler = function($event,index,layers){
-        console.log('dropSuccessHandler', $event,index,layers)
     }
-
 })
 
 </script>

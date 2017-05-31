@@ -1,3 +1,5 @@
+(function(){
+
 var el = d3.select
 
 var $input = el('#d3 input'),
@@ -25,22 +27,24 @@ store.subscribe(function(){
     var $selection = $todos.selectAll('li.item').data(todos,_.property('id'));
     $selection.exit().remove();
     $selection.enter()
-                    .append('li')
-                    .classed('item',true)
-                    .text(_.property('text'))
-                    .each(function(){
-                        var $li = el(this);
-                        $li.append('a').text('toggle').attr('href','#')
-                        .on('click', function(it){ 
-                            store.dispatch(toggleTodo(it.id)) 
-                            });
-                        $li.append('a').text('delete').attr('href','#')
-                        .on('click', function(it){ 
-                            store.dispatch(deleteTodo(it.id)) 
-                            });    
-                    })
-                .merge($selection)
-                    .classed('completed', _.property('completed'));
+                .append('li')
+                .classed('item',true)
+                .text(_.property('text'))
+                .each(function(){
+                    var $li = el(this);
+                    $li.append('input').attr('type','checkbox')
+                    .on('click', function(it){ 
+                        store.dispatch(toggleTodo(it.id)) 
+                        });
+                    $li.append('a').text('delete').attr('href','#')
+                    .on('click', function(it){ 
+                        store.dispatch(deleteTodo(it.id)) 
+                        });    
+                })
+            .merge($selection)
+                .classed('completed', _.property('completed'))
+                .select('input')
+                    .property('checked',_.property('completed'));
 });
 
 $visibility.selectAll('li')
@@ -67,6 +71,10 @@ store.subscribe(function(){
 // 
 $button.on('click', function(){
     var text = $input.node().value.trim()
-    if(text)
-        store.dispatch(addToDo(text))
+    if(text) {
+        store.dispatch(addToDo(text));
+        $input.node().value = '';
+    }
 });
+
+})();
