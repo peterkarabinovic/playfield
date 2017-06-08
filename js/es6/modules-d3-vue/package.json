@@ -10,16 +10,14 @@
   },
   "author": "Peter Karabinovich",
   "devDependencies": {
-    "babel-plugin-external-helpers": "^6.22.0",
-    "babel-preset-latest": "^6.24.1",
     "rollup": "^0.41.6",
-    "rollup-plugin-babel": "^2.7.1",
     "rollup-plugin-node-resolve": "^3.0.0",
     "rollup-plugin-uglify": "^2.0.1",
     "rollup-watch": "^3.2.2"
   },
   "dependencies": {
     "d3": "^4.9.1",
+    "leaflet": "^1.0.3",
     "vue": "^2.3.3"
   }
 }

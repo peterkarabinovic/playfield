@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <title></title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="css/w3.css" rel="stylesheet">
+    <link href="css/w3-theme-blue-grey.css" rel="stylesheet">
+    <style>
+        #contents{
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+        }
+        #map {
+            position: absolute;
+            top: 100px; left: 100px; width: 700px; height: 500px;
+        }
+        #file {
+            position: absolute;
+            top: 100px; left: 820px;
+        }
+        
+    </style>
+</head>
+
+<body>
+
+    <div id='contents' class="">
+        <div id='map' class="w3-theme-l4">
+        </div>
+        <input id="file" type="file" accept=".svg">
+    </div>
+
+    <script src="libs/d3.js"></script>
+</body>
+
+</html>
