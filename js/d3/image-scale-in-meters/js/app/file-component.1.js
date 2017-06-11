@@ -65,28 +65,18 @@ export default function(el)
                     }
                     var w = svg.width.baseVal
                     var h = svg.height.baseVal
-                    var viewBox = null
-                    if(svg.viewBox.baseVal && svg.viewBox.baseVal.width != 0) {
-                        var vb = svg.viewBox.baseVal;
-                        viewBox = [vb.x, vb.y, vb.width, vb.height].join(' ')
-                        d3.select(svg).attr('viewBox', null)
-                    }
-                    else {
-                        viewBox = '0 0 ' + Math.round(w.valueInSpecifiedUnits) + ' ' +  Math.round(h.valueInSpecifiedUnits);
-                    }
-                    
+                    var unitTypes = [0,1,5]
+                    // if(!_.contains(unitTypes,w.unitType) || !_.contains(unitTypes,h.unitType) ){
+                    //     var er = wrong_type_units.replace('{width}', w.valueAsString)
+                    //                             .replace('{height}', h.valueAsString)
+                    //     vm.error = er;
+                    //     return;
+                    // }
                     vm.raw_xml = xml;
                     vm.svg_document = svg;
+                    vm.width_px = w.value;
+                    vm.height_px = h.value;
                     vm.file = file.name;
-                    vm.viewBox = viewBox;
-                    vm.$emit('NEW_SVG', {
-                        raw_xml: vm.raw_xml,
-                        svg_document: vm.svg_document,
-                        viewBox: vm.viewBox,
-                        width_m: vm.width_m,
-                        height_m: vm.height_m
-                    });
-                    
                 }
                 reader.readAsText(file)
                     

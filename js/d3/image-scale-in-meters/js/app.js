@@ -8,10 +8,8 @@ function startswith(str, substr) {
 var incorrect_file_type = 'Выберите SVG-файл.';
 var invalid_file_content = 'SVG-файл с ошибками.';
 var no_size_attributes = 'SVG-документ должен содержать атрибуты "width" и "height".';
-var wrong_type_units = 'Атрибуты "width" и "height" SVG-документа\nдолжны задаваться в пикселях. "{width}" "{height}".';
-
-
-var FileWidget = function(el){
+var FileWidget = function(el)
+{
 
     var vm = new Vue({
         el: el,
@@ -19,13 +17,23 @@ var FileWidget = function(el){
             error: '',
             file: null,
             raw_xml: null,
-            svg_element: null,
+            svg_document: null,
             width_px: null,
             height_px: null,
             width_m: null,
             height_m: null
         },
         methods: {
+            on_save: function(){
+                this.$emit('NEW_SVG', {
+                    raw_xml: this.raw_xml,
+                    svg_document: this.svg_document,
+                    width: this.width_px,
+                    height: this.height_px,
+                    width_m: this.width_m,
+                    height_m: this.height_m
+                });
+            },
             on_change: function(e){
                var file = e.target.files[0]; 
                vm.file = null;
@@ -57,18 +65,28 @@ var FileWidget = function(el){
                     }
                     var w = svg.width.baseVal;
                     var h = svg.height.baseVal;
-                    var unitTypes = [0,1,5];
-                    if(!_.contains(unitTypes,w.unitType) || !_.contains(unitTypes,h.unitType) ){
-                        var er = wrong_type_units.replace('{width}', w.valueAsString)
-                                                .replace('{height}', h.valueAsString);
-                        vm.error = er;
-                        return;
+                    var viewBox = null;
+                    if(svg.viewBox.baseVal && svg.viewBox.baseVal.width != 0) {
+                        var vb = svg.viewBox.baseVal;
+                        viewBox = [vb.x, vb.y, vb.width, vb.height].join(' ');
+                        d3.select(svg).attr('viewBox', null);
                     }
+                    else {
+                        viewBox = '0 0 ' + Math.round(w.valueInSpecifiedUnits) + ' ' +  Math.round(h.valueInSpecifiedUnits);
+                    }
+                    
                     vm.raw_xml = xml;
                     vm.svg_document = svg;
-                    vm.width_px = w.value;
-                    vm.height_px = h.value;
                     vm.file = file.name;
+                    vm.viewBox = viewBox;
+                    vm.$emit('NEW_SVG', {
+                        raw_xml: vm.raw_xml,
+                        svg_document: vm.svg_document,
+                        viewBox: vm.viewBox,
+                        width_m: vm.width_m,
+                        height_m: vm.height_m
+                    });
+                    
                 };
                 reader.readAsText(file);
                     
@@ -77,6 +95,8 @@ var FileWidget = function(el){
 
     });
 
+    vm.on = function(){ vm.$on.apply(vm, arguments);};
+    return vm;
 };
 
 // import SvgFileReader from './svg-file-reader.js'
@@ -95,5 +115,14 @@ var FileWidget = function(el){
 // })
 
 var file_widget = FileWidget('#svg-selector');
+
+file_widget.on('NEW_SVG', function(e){
+     var $map = d3.select('#map svg');
+     $map.selectAll("*").remove();
+     $map.attr('viewBox', e.viewBox);
+     $map.attr('preserveAspectRatio', "xMidYMid meet");
+     $map.node().appendChild(e.svg_document);
+
+});
 
 }());

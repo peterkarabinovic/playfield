@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<svg 
-xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
-width="500cm" height="200cm" viewBox="0 0 500 200" >
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+height='30' width='30' 
+viewBox='0 0 300 300'
+>
 
-    <rect x="20" y="10" width="10" height="5"
+    <rect x="10" y="10" width="10" height="10"
           style="stroke: #000000; fill:none;"/>
 
 </svg>
