@@ -8,7 +8,8 @@ var no_size_attributes = 'SVG-документ должен содержать �
 var wrong_type_units = 'Атрибуты "width" и "height" SVG-документа\nдолжны задаваться в пикселях. "{width}" "{height}".'
 
 
-export default function(el){
+export default function(el)
+{
 
     var vm = new Vue({
         el: el,
@@ -16,13 +17,23 @@ export default function(el){
             error: '',
             file: null,
             raw_xml: null,
-            svg_element: null,
+            svg_document: null,
             width_px: null,
             height_px: null,
             width_m: null,
             height_m: null
         },
         methods: {
+            on_save: function(){
+                this.$emit('NEW_SVG', {
+                    raw_xml: this.raw_xml,
+                    svg_document: this.svg_document,
+                    width: this.width_px,
+                    height: this.height_px,
+                    width_m: this.width_m,
+                    height_m: this.height_m
+                });
+            },
             on_change: function(e){
                var file = e.target.files[0] 
                vm.file = null;
@@ -54,24 +65,50 @@ export default function(el){
                     }
                     var w = svg.width.baseVal
                     var h = svg.height.baseVal
-                    var unitTypes = [0,1,5]
-                    if(!_.contains(unitTypes,w.unitType) || !_.contains(unitTypes,h.unitType) ){
-                        var er = wrong_type_units.replace('{width}', w.valueAsString)
-                                                .replace('{height}', h.valueAsString)
-                        vm.error = er;
-                        return;
+                    var viewBox = null
+                    if(svg.viewBox.baseVal && svg.viewBox.baseVal.width != 0) {
+                        var vb = svg.viewBox.baseVal;
+                        viewBox = [vb.x, vb.y, vb.width, vb.height].join(' ')
+                        d3.select(svg).attr('viewBox', null)
                     }
-                    vm.raw_xml = xml;
+                    else {
+                        viewBox = '0 0 ' + Math.round(w.valueInSpecifiedUnits) + ' ' +  Math.round(h.valueInSpecifiedUnits);
+                    }
+
+https://codepen.io/tigt/post/optimizing-svgs-in-data-uris                    
+                     // Maybe instead xml as raw_xml, we need use  XMLSerializer
+                     // to serialize svg into string
+                    encodeURIComponent
+                    vm.raw_xml = xml
+                    vm.data_url = 'data:image/svg+xml,' + encodeURIComponent(xml.replace(/\n+/g,''))
+                                                             .replace(/%20/g, ' ') // put spaces back in
+                                                             .replace(/%3D/g, '=') // ditto equals signs
+                                                             .replace(/%3A/g, ':') // ditto colons
+                                                             .replace(/%2F/g, '/') // ditto slashes
+                                                             .replace(/%22/g, "'"); // replace quotes with apostrophes (may break certain SVGs)
+
                     vm.svg_document = svg;
-                    vm.width_px = w.value;
-                    vm.height_px = h.value;
                     vm.file = file.name;
+                    vm.viewBox = viewBox;
+                    vm.$emit('NEW_SVG', {
+                        raw_xml: vm.raw_xml,
+                        data_url: vm.data_url,
+                        svg_document: vm.svg_document,
+                        viewBox: vm.viewBox,
+                        width_m: vm.width_m,
+                        height_m: vm.height_m,
+                        width: w.valueInSpecifiedUnits,
+                        height: h.valueInSpecifiedUnits
+                    });
+                    
                 }
                 reader.readAsText(file)
                     
             }            
         }
 
-    })
+    });
 
+    vm.on = function(){ vm.$on.apply(vm, arguments)}
+    return vm;
 }

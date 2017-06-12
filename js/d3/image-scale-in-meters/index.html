@@ -14,11 +14,19 @@
         }
         #map {
             position: absolute;
-            top: 100px; left: 100px;
+            top: 50px; left: 50px;
+            width: 800px; height: 600px;
+        }
+        #map2 {
+            position: absolute;
+            top: 670px; left: 50px;
+            width: 800px; height: 600px;
         }
         #svg-selector {
             position: absolute;
-            top: 100px; left: 820px;
+            top: 100px; left: 870px;
+            padding: 0; 
+            padding-bottom: 100%; 
         }
         
     </style>
@@ -27,9 +35,14 @@
 <body>
 
     <div id='contents' class="">
-        <div id='map' class="w3-theme-l4">
+        <div id='map' class="w3-card-4">
+            <svg  width='800px' height='600px'>
+            </svg>
         </div>
-        <div id='svg-selector' class='w3-container w3-card-4 w3-small'>
+        <div id='map2' class="w3-card-4 w3-theme-dark">
+            <img  width='800px' height='600px'></svg>
+        </div>
+        <div id='svg-selector' class='w3-container  w3-small'>
             <input id="file" type="file" accept=".svg" class="w3-section" @change='on_change'>
             <div class="  w3-text-red" v-if='error'>
                <pre>{{error}}</pre>
@@ -47,7 +60,7 @@
                 <input class="w3-input w3-border" type="number" v-model='height_m'>
             </div>
             <div class="w3-section" v-show='file'>
-                <button class="w3-button w3-border" :disabled="!width_m || !height_m">Принять</button>
+                <button class="w3-button w3-border" :disabled="!width_m || !height_m" @click='on_save'>Принять</button>
             </div>
         </div>
         
