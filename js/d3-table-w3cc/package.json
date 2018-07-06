@@ -1,0 +1,15 @@
+{
+  "name": "d3-grid",
+  "version": "1.0.0",
+  "description": "",
+  "scripts": {
+    "dev-graph": "rollup -c -w -i src/graph.js -f iife -o dist/js/graph.js",
+    "build": "rollup -c -w -i app.js -f iife -o dist/bundle.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "d3": "^4.11.0"
+  }
+}

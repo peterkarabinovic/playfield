@@ -304,7 +304,7 @@ if __name__ == '__main__':
             assert len(glob.glob('*.tif')), "no GeoTiff files in current directory"
             path = glob.glob('*.tif')[0]
         assert os.path.exists(path), "file not exists {}".format(path)
-        path = 'D:\\data\\sentinel_ua_27GB\\mos8bit.tif'
+        path = 'D:\\source\\playfield\\py\\raster-viewer\\marinka_img.tif'
         raster_path = reproject_tif(path)
 
         with rasterio.open(raster_path, 'r') as raster:
@@ -326,11 +326,15 @@ if __name__ == '__main__':
         for ws in webservers:
             ws.start()
 
+        print("Render {}".format(path))
+        print("Server run on http://{}:{}".format(host, port))
+
         for ws in webservers:
             ws.join()
 
 
+
     except KeyboardInterrupt:
         raster.close()
-    except Exception as ex:
-        print("{}: {}".format(type(ex).__name__, str(ex)))
+    #except Exception as ex:
+     #   print("{}: {}".format(type(ex).__name__, str(ex)))

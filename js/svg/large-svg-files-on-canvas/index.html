@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <title></title>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <style>
+            #canvas {
+                position: absolute;
+                top: 14px; left: 7px; /*width: 600px; height: 600px;*/
+                border:1px solid #d3d3d3;
+            }
+
+            #canvas2 {
+                position: absolute;
+                top: 514px; left: 614px; /*width: 600px; height: 600px;*/
+                border:1px solid #d3d3d3;
+            }
+
+            #svg {
+                position: absolute;
+                top: 14px; left: 614px; 
+                max-width: 600px;
+                max-height: 600px;
+                /*border:1px solid #d3d3d3;*/
+                
+            }
+        </style>
+    </head>
+    <body>
+          <canvas id='canvas' width="600" height="600"></canvas>  
+          <img id='svg' src='schema.svg'></img>  
+          <canvas id='canvas2' width="300" height="300"></canvas>  
+    </body>
+    <script>
+        var svg_h = 1123.19;
+        var svg_w = 1587.36;
+        
+        var dy = (w) =>  (w - (svg_h / svg_w) * w) / 2;
+        
+        window.onload = function(){
+            var $svg = document.getElementById('svg');
+            var rect = $svg.getBoundingClientRect();
+            var $canvas = document.getElementById('canvas');
+            var ctx = $canvas.getContext('2d')
+            ctx.drawImage($svg, 0, 0, svg_w, svg_h, 0, dy(600), 600, 600 - dy(600) * 2);
+
+            var $canvas = document.getElementById('canvas2');
+            var ctx = $canvas.getContext('2d')
+            var part_w = svg_w / 10;
+            var part_h = svg_h / 10;
+            ctx.drawImage($svg, -(svg_w-part_w) / 2, -(svg_h-part_h) / 2, part_w, part_h, 0, dy(300), 300, 300 - dy(300) * 2);
+            
+        }
+
+
+
+
+    </script>
+</html>

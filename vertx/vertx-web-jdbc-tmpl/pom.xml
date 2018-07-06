@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>vertx-web-jdbc</groupId>
+    <artifactId>vertx-web-jdbc</artifactId>
+    <version>1.0</version>
+
+    <dependencies>
+
+        <!-- Vert.x -->
+        <dependency>
+            <groupId>io.vertx</groupId>
+            <artifactId>vertx-core</artifactId>
+            <version>3.5.1</version>
+        </dependency>
+
+
+        <!-- WEB -->
+        <dependency>
+            <groupId>io.vertx</groupId>
+            <artifactId>vertx-web</artifactId>
+            <version>3.5.1</version>
+        </dependency>
+
+
+        <!-- Postgres JDBC -->
+<!--        <dependency>
+            <groupId>io.vertx</groupId>
+            <artifactId>vertx-jdbc-client</artifactId>
+            <version>3.5.1</version>
+        </dependency>
+-->
+        <!-- RxJava -->
+        <dependency>
+            <groupId>io.vertx</groupId>
+            <artifactId>vertx-rx-java</artifactId>
+            <version>3.5.1</version>
+        </dependency>
+
+        <!-- Logging -->
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+            <version>1.2.3</version>
+        </dependency>
+
+
+<dependency>
+ 	<groupId>io.dropwizard.metrics</groupId>
+        <artifactId>metrics-jvm</artifactId>
+	<version>4.0.2</version>
+</dependency>
+
+
+
+<!--
+
+<dependency>
+  <groupId>io.micrometer</groupId>
+  <artifactId>micrometer-registry-prometheus</artifactId>
+  <version>1.0.2</version>
+</dependency>
+
+
+<dependency>
+  <groupId>io.vertx</groupId>
+  <artifactId>vertx-circuit-breaker</artifactId>
+  <version>3.5.1</version>
+</dependency>
+
+
+-->
+
+
+        <!-- Tests -->
+<!--        <dependency>
+          <groupId>io.vertx</groupId>
+          <artifactId>vertx-mail-client</artifactId>
+          <version>3.5.1</version>
+        </dependency>
+
+    -->
+        
+    </dependencies>
+
+</project>
